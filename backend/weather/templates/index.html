@@ -1,0 +1,771 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  {% load static %}
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#101b35">
+  <link rel="icon" type="image/svg+xml" href="{% static 'weather/favicon.svg' %}">
+  <title>Weatherly | Your weather, at a glance</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: #f5f7ff;
+      background: #101b35;
+      font-synthesis: none;
+      text-rendering: optimizeLegibility;
+      -webkit-font-smoothing: antialiased;
+      --muted: #aab6d0;
+      --panel: rgba(25, 39, 70, 0.78);
+      --line: rgba(210, 224, 255, 0.12);
+      --accent: #9de6d1;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      min-width: 320px;
+      min-height: 100vh;
+      margin: 0;
+      background:
+        radial-gradient(ellipse at 82% 4%, rgba(84, 125, 214, 0.3), transparent 34rem),
+        radial-gradient(ellipse at 4% 55%, rgba(30, 153, 165, 0.16), transparent 35rem),
+        linear-gradient(145deg, #101b35 0%, #142543 52%, #102e46 100%);
+    }
+
+    .page-shell {
+      width: min(100% - 40px, 920px);
+      margin: 0 auto;
+      padding: 32px 0 24px;
+    }
+
+    .topbar,
+    .brand,
+    .search-form,
+    .weather-heading,
+    .metric-label,
+    .footer {
+      display: flex;
+      align-items: center;
+    }
+
+    .topbar {
+      justify-content: space-between;
+      margin-bottom: 76px;
+    }
+
+    .brand {
+      gap: 11px;
+      color: #fff;
+      font-size: 1.05rem;
+      font-weight: 750;
+      letter-spacing: 0.02em;
+    }
+
+    .brand-mark {
+      display: grid;
+      width: 40px;
+      height: 40px;
+      place-items: center;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 14px;
+      background: rgba(255, 255, 255, 0.1);
+      color: var(--accent);
+    }
+
+    .top-note,
+    .eyebrow {
+      color: var(--muted);
+      font-size: 0.75rem;
+      font-weight: 700;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+    }
+
+    .intro {
+      max-width: 680px;
+      margin: 0 auto 30px;
+      text-align: center;
+    }
+
+    .intro .eyebrow {
+      margin: 0 0 14px;
+      color: var(--accent);
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(2.4rem, 7vw, 4.8rem);
+      font-weight: 750;
+      letter-spacing: -0.065em;
+      line-height: 1.04;
+    }
+
+    .intro-copy {
+      margin: 18px 0 0;
+      color: var(--muted);
+      font-size: 1.05rem;
+      line-height: 1.7;
+    }
+
+    .search-form {
+      width: min(100%, 620px);
+      gap: 10px;
+      margin: 0 auto 42px;
+      padding: 8px;
+      border: 1px solid rgba(222, 233, 255, 0.18);
+      border-radius: 18px;
+      background: rgba(6, 14, 31, 0.38);
+      box-shadow: 0 18px 55px rgba(0, 0, 0, 0.2);
+      backdrop-filter: blur(16px);
+    }
+
+    .search-icon {
+      flex: 0 0 auto;
+      margin-left: 12px;
+      color: #9aa9c9;
+    }
+
+    .search-form input {
+      width: 100%;
+      min-width: 0;
+      padding: 13px 4px;
+      border: 0;
+      outline: 0;
+      background: transparent;
+      color: #fff;
+      font: inherit;
+    }
+
+    .search-form input::placeholder {
+      color: #9aa9c9;
+    }
+
+    .search-form:focus-within {
+      border-color: rgba(157, 230, 209, 0.72);
+      box-shadow: 0 0 0 3px rgba(157, 230, 209, 0.12), 0 18px 55px rgba(0, 0, 0, 0.2);
+    }
+
+    .search-form button,
+    .try-again {
+      display: inline-flex;
+      flex: 0 0 auto;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      min-height: 48px;
+      padding: 0 20px;
+      border: 0;
+      border-radius: 12px;
+      background: var(--accent);
+      color: #102a36;
+      cursor: pointer;
+      font: inherit;
+      font-weight: 750;
+      text-decoration: none;
+      transition: transform 160ms ease, background 160ms ease;
+    }
+
+    .search-form button:hover,
+    .try-again:hover {
+      transform: translateY(-1px);
+      background: #b6f1e0;
+    }
+
+    .search-form button:focus-visible,
+    .try-again:focus-visible {
+      outline: 3px solid #fff;
+      outline-offset: 3px;
+    }
+
+    .weather-card,
+    .not-found,
+    .empty-state {
+      width: min(100%, 760px);
+      margin: 0 auto;
+      border: 1px solid var(--line);
+      border-radius: 28px;
+      background: var(--panel);
+      box-shadow: 0 28px 80px rgba(0, 0, 0, 0.25);
+      backdrop-filter: blur(18px);
+    }
+
+    .weather-card {
+      padding: clamp(24px, 5vw, 42px);
+    }
+
+    .weather-heading {
+      justify-content: space-between;
+      gap: 24px;
+      padding-bottom: 30px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .location-tag {
+      margin: 0 0 11px;
+      color: var(--accent);
+      font-size: 0.77rem;
+      font-weight: 750;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    .city-name {
+      margin: 0;
+      font-size: clamp(1.8rem, 5vw, 3rem);
+      letter-spacing: -0.045em;
+    }
+
+    .condition {
+      margin: 9px 0 0;
+      color: var(--muted);
+      font-size: 1rem;
+      text-transform: capitalize;
+    }
+
+    .weather-icon {
+      width: 120px;
+      height: 120px;
+      margin: -8px -12px -8px 0;
+      filter: drop-shadow(0 8px 24px rgba(157, 230, 209, 0.22));
+    }
+
+    .metrics {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      padding-top: 24px;
+    }
+
+    .metric {
+      min-height: 112px;
+      padding: 18px;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: rgba(255, 255, 255, 0.035);
+    }
+
+    .metric-label {
+      gap: 8px;
+      margin: 0 0 14px;
+      color: var(--muted);
+      font-size: 0.82rem;
+    }
+
+    .metric-value {
+      margin: 0;
+      color: #fff;
+      font-size: 1.1rem;
+      font-weight: 700;
+    }
+
+    .not-found,
+    .empty-state {
+      padding: clamp(30px, 6vw, 54px) 24px;
+      text-align: center;
+    }
+
+    .state-icon {
+      display: grid;
+      width: 68px;
+      height: 68px;
+      margin: 0 auto 20px;
+      place-items: center;
+      border: 1px solid rgba(255, 190, 160, 0.25);
+      border-radius: 22px;
+      background: rgba(255, 190, 160, 0.1);
+      color: #ffd0b8;
+    }
+
+    .not-found h2,
+    .empty-state h2 {
+      margin: 0;
+      font-size: clamp(1.7rem, 4vw, 2.3rem);
+      letter-spacing: -0.04em;
+    }
+
+    .not-found p,
+    .empty-state p {
+      max-width: 470px;
+      margin: 12px auto 24px;
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .not-found strong {
+      color: #fff;
+    }
+
+    .empty-state .state-icon {
+      border-color: rgba(157, 230, 209, 0.2);
+      background: rgba(157, 230, 209, 0.09);
+      color: var(--accent);
+    }
+
+    .footer {
+      justify-content: center;
+      gap: 7px;
+      margin-top: 42px;
+      color: #8392b0;
+      font-size: 0.8rem;
+    }
+
+    .recent-section {
+      width: min(100%, 760px);
+      margin: 34px auto 0;
+    }
+
+    .recent-section[hidden] {
+      display: none;
+    }
+
+    .recent-heading {
+      display: flex;
+      align-items: end;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 15px;
+    }
+
+    .recent-heading h2 {
+      margin: 0;
+      font-size: 1.25rem;
+      letter-spacing: -0.03em;
+    }
+
+    .recent-heading p,
+    .recent-status {
+      margin: 6px 0 0;
+      color: var(--muted);
+      font-size: 0.82rem;
+    }
+
+    .recent-status {
+      text-align: right;
+    }
+
+    .recent-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(205px, 1fr));
+      gap: 12px;
+    }
+
+    .recent-card {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+      padding: 14px;
+      border: 1px solid var(--line);
+      border-radius: 17px;
+      background: rgba(25, 39, 70, 0.72);
+    }
+
+    .recent-card__select {
+      display: flex;
+      flex: 1;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+      padding: 0;
+      border: 0;
+      background: transparent;
+      color: inherit;
+      cursor: pointer;
+      font: inherit;
+      text-align: left;
+    }
+
+    .recent-card__select:focus-visible,
+    .recent-card__remove:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 3px;
+    }
+
+    .recent-card__icon {
+      width: 48px;
+      height: 48px;
+      flex: 0 0 auto;
+    }
+
+    .recent-card__details {
+      min-width: 0;
+    }
+
+    .recent-card__city {
+      display: block;
+      overflow: hidden;
+      color: #fff;
+      font-size: 0.95rem;
+      font-weight: 700;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .recent-card__condition {
+      display: block;
+      margin-top: 4px;
+      overflow: hidden;
+      color: var(--muted);
+      font-size: 0.78rem;
+      text-overflow: ellipsis;
+      text-transform: capitalize;
+      white-space: nowrap;
+    }
+
+    .recent-card__temperature {
+      margin-left: auto;
+      color: #fff;
+      font-size: 1rem;
+      font-weight: 750;
+      white-space: nowrap;
+    }
+
+    .recent-card__remove {
+      display: grid;
+      width: 30px;
+      height: 30px;
+      flex: 0 0 auto;
+      place-items: center;
+      border: 0;
+      border-radius: 9px;
+      background: transparent;
+      color: #aab6d0;
+      cursor: pointer;
+      font-size: 1.1rem;
+    }
+
+    .recent-card__remove:hover {
+      background: rgba(255, 255, 255, 0.08);
+      color: #fff;
+    }
+
+    @media (max-width: 600px) {
+      .page-shell {
+        width: min(100% - 28px, 920px);
+        padding-top: 20px;
+      }
+
+      .topbar {
+        margin-bottom: 56px;
+      }
+
+      .top-note {
+        font-size: 0.62rem;
+      }
+
+      .search-form {
+        gap: 4px;
+        margin-bottom: 30px;
+      }
+
+      .search-form button {
+        width: 48px;
+        padding: 0;
+        font-size: 0;
+      }
+
+      .search-form button svg {
+        width: 20px;
+        height: 20px;
+      }
+
+      .weather-heading {
+        gap: 10px;
+      }
+
+      .weather-icon {
+        width: 88px;
+        height: 88px;
+      }
+
+      .metrics {
+        grid-template-columns: 1fr 1fr;
+      }
+
+      .metric {
+        min-height: 100px;
+        padding: 14px;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *,
+      *::before,
+      *::after {
+        scroll-behavior: auto !important;
+        transition-duration: 0.01ms !important;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="page-shell">
+    <header class="topbar">
+      <div class="brand">
+        <span class="brand-mark" aria-hidden="true">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+            <path d="M7.5 18.5h9a4 4 0 0 0 .4-8 5.5 5.5 0 0 0-10.7 1.1 3.5 3.5 0 0 0 1.3 6.9Z" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="m9 21 1-1.5M14 21l1-1.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+          </svg>
+        </span>
+        Weatherly
+      </div>
+      <span class="top-note">A little clarity for your day</span>
+    </header>
+
+    <main
+      data-search-success="{% if data.country_code %}true{% else %}false{% endif %}"
+      data-search-city="{{ city }}">
+      <section class="intro">
+        <p class="eyebrow">The forecast, made simple</p>
+        <h1>Find your kind of weather.</h1>
+        <p class="intro-copy">A quick look at the skies, wherever you are.</p>
+      </section>
+
+      <form class="search-form" action="" method="post">
+        {% csrf_token %}
+        <svg class="search-icon" width="21" height="21" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <circle cx="10.8" cy="10.8" r="6.8" stroke="currentColor" stroke-width="1.7"/>
+          <path d="m16 16 4.2 4.2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+        </svg>
+        <input type="text" name="city" value="{{ city }}" placeholder="Search a city..." aria-label="City name" required>
+        <button type="submit">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <circle cx="10.8" cy="10.8" r="6.8" stroke="currentColor" stroke-width="1.8"/>
+            <path d="m16 16 4.2 4.2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+          </svg>
+          Search
+        </button>
+      </form>
+
+      {% if error %}
+      <section class="not-found" role="status">
+        <span class="state-icon" aria-hidden="true">
+          <svg width="30" height="30" viewBox="0 0 24 24" fill="none">
+            <path d="M12 8v4m0 4h.01M10.3 3.9 2.7 17a2 2 0 0 0 1.7 3h15.2a2 2 0 0 0 1.7-3l-7.6-13.1a2 2 0 0 0-3.4 0Z" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </span>
+        <p class="eyebrow">No forecast found</p>
+        <h2>Page Not Found</h2>
+        <p>{{ error }}{% if city %} We couldn't find <strong>{{ city }}</strong>. Check the spelling and try another place.{% endif %}</p>
+        <a class="try-again" href="{% url 'index' %}">Try another search</a>
+      </section>
+      {% elif data.country_code %}
+      <section class="weather-card" aria-label="Weather for {{ city }}">
+        <div class="weather-heading">
+          <div>
+            <p class="location-tag">⌖ &nbsp;{{ data.country_code }} · {{ data.coordinate }}</p>
+            <h2 class="city-name">{{ city }}</h2>
+            <p class="condition">{{ data.description }}</p>
+          </div>
+          <img class="weather-icon" src="https://openweathermap.org/img/wn/{{ data.icon }}@2x.png" alt="{{ data.description }}">
+        </div>
+        <div class="metrics">
+          <article class="metric">
+            <p class="metric-label"><span aria-hidden="true">🌡</span> Temperature</p>
+            <p class="metric-value">{{ data.temp }}</p>
+          </article>
+          <article class="metric">
+            <p class="metric-label"><span aria-hidden="true">☁</span> Conditions</p>
+            <p class="metric-value">{{ data.main }}</p>
+          </article>
+          <article class="metric">
+            <p class="metric-label"><span aria-hidden="true">💧</span> Humidity</p>
+            <p class="metric-value">{{ data.humidity }}%</p>
+          </article>
+          <article class="metric">
+            <p class="metric-label"><span aria-hidden="true">⌁</span> Pressure</p>
+            <p class="metric-value">{{ data.pressure }} hPa</p>
+          </article>
+          <article class="metric">
+            <p class="metric-label"><span aria-hidden="true">⌖</span> Coordinates</p>
+            <p class="metric-value">{{ data.coordinate }}</p>
+          </article>
+          <article class="metric">
+            <p class="metric-label"><span aria-hidden="true">◎</span> Country</p>
+            <p class="metric-value">{{ data.country_code }}</p>
+          </article>
+        </div>
+      </section>
+      {% else %}
+      <section class="empty-state">
+        <span class="state-icon" aria-hidden="true">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none">
+            <path d="M7.5 18.5h9a4 4 0 0 0 .4-8 5.5 5.5 0 0 0-10.7 1.1 3.5 3.5 0 0 0 1.3 6.9Z" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="m9 21 1-1.5M14 21l1-1.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+          </svg>
+        </span>
+        <h2>Where to next?</h2>
+        <p>Enter a city above and discover what the sky has in store.</p>
+      </section>
+      {% endif %}
+
+      <section
+        class="recent-section"
+        id="recent-places"
+        data-weather-url="{% url 'weather_data' %}"
+        aria-labelledby="recent-title"
+        hidden>
+        <div class="recent-heading">
+          <div>
+            <h2 id="recent-title">Your recent places</h2>
+            <p>Saved on this device · refreshed every 10 minutes</p>
+          </div>
+          <p class="recent-status" id="recent-status" aria-live="polite"></p>
+        </div>
+        <div class="recent-grid" id="recent-grid"></div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <span aria-hidden="true">✦</span>
+      <span>Made for brighter days</span>
+    </footer>
+  </div>
+  <script>
+    (() => {
+      const storageKey = 'weatherly.recentCities.v1';
+      const maxCities = 5;
+      const refreshInterval = 10 * 60 * 1000;
+      const main = document.querySelector('main');
+      const section = document.getElementById('recent-places');
+      const grid = document.getElementById('recent-grid');
+      const status = document.getElementById('recent-status');
+      const form = document.querySelector('.search-form');
+      const cityInput = form.querySelector('input[name="city"]');
+      const weatherUrl = section.dataset.weatherUrl;
+      let isRefreshing = false;
+
+      function readCities() {
+        try {
+          const value = JSON.parse(localStorage.getItem(storageKey) || '[]');
+          return Array.isArray(value)
+            ? value.filter(city => typeof city === 'string' && city.trim()).slice(0, maxCities)
+            : [];
+        } catch (error) {
+          console.warn('Could not read saved weather searches.', error);
+          return [];
+        }
+      }
+
+      function saveCity(city) {
+        const cities = readCities().filter(
+          saved => saved.toLocaleLowerCase() !== city.toLocaleLowerCase()
+        );
+        cities.unshift(city);
+        try {
+          localStorage.setItem(storageKey, JSON.stringify(cities.slice(0, maxCities)));
+        } catch (error) {
+          console.warn('Could not save this weather search.', error);
+        }
+      }
+
+      function makeCard(weather) {
+        const card = document.createElement('article');
+        card.className = 'recent-card';
+
+        const select = document.createElement('button');
+        select.className = 'recent-card__select';
+        select.type = 'button';
+        select.setAttribute('aria-label', `Search weather for ${weather.city}`);
+        select.addEventListener('click', () => {
+          cityInput.value = weather.city;
+          form.requestSubmit();
+        });
+
+        const icon = document.createElement('img');
+        icon.className = 'recent-card__icon';
+        icon.alt = '';
+        if (/^\d{2}[dn]$/.test(weather.icon)) {
+          icon.src = `https://openweathermap.org/img/wn/${weather.icon}.png`;
+        }
+
+        const details = document.createElement('span');
+        details.className = 'recent-card__details';
+        const city = document.createElement('span');
+        city.className = 'recent-card__city';
+        city.textContent = weather.city;
+        const condition = document.createElement('span');
+        condition.className = 'recent-card__condition';
+        condition.textContent = weather.description;
+        details.append(city, condition);
+
+        const temperature = document.createElement('span');
+        temperature.className = 'recent-card__temperature';
+        temperature.textContent = weather.temp;
+        select.append(icon, details, temperature);
+
+        const remove = document.createElement('button');
+        remove.className = 'recent-card__remove';
+        remove.type = 'button';
+        remove.textContent = '×';
+        remove.setAttribute('aria-label', `Remove ${weather.city} from recent places`);
+        remove.addEventListener('click', () => {
+          try {
+            const cities = readCities().filter(
+              saved => saved.toLocaleLowerCase() !== weather.city.toLocaleLowerCase()
+            );
+            localStorage.setItem(storageKey, JSON.stringify(cities));
+            renderCities(cities);
+          } catch (error) {
+            console.warn('Could not remove this saved weather search.', error);
+          }
+        });
+
+        card.append(select, remove);
+        return card;
+      }
+
+      async function refreshCities() {
+        const cities = readCities();
+        section.hidden = cities.length === 0;
+        if (!cities.length || isRefreshing) return;
+
+        isRefreshing = true;
+        status.textContent = 'Updating…';
+        const results = await Promise.all(cities.map(async city => {
+          try {
+            const url = new URL(weatherUrl, window.location.href);
+            url.searchParams.set('city', city);
+            const response = await fetch(url, { cache: 'no-store' });
+            const weather = await response.json();
+            if (!response.ok) throw new Error(weather.error || 'Weather update failed.');
+            return weather;
+          } catch (error) {
+            console.warn(`Could not refresh weather for ${city}.`, error);
+            return null;
+          }
+        }));
+
+        const available = results.filter(Boolean);
+        renderCities(available);
+        status.textContent = available.length === cities.length
+          ? `Updated ${new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`
+          : 'Some places could not be updated';
+        isRefreshing = false;
+      }
+
+      function renderCities(cities) {
+        grid.replaceChildren(...cities.map(makeCard));
+        section.hidden = cities.length === 0;
+      }
+
+      if (main.dataset.searchSuccess === 'true') {
+        saveCity(main.dataset.searchCity.trim());
+      }
+
+      refreshCities();
+      window.setInterval(() => {
+        if (document.visibilityState === 'visible') refreshCities();
+      }, refreshInterval);
+    })();
+  </script>
+</body>
+
+</html>
